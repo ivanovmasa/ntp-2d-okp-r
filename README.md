@@ -13,7 +13,7 @@ Problem se sastoji iz postavljanja pravougaonika dimenzija (w,h) na pravougaonu 
 Rešenje je implementirano u programskom jeziku *Rust*. Za implementaciju se koristi **evolutivni algoritam**. 
 
 **Hromozom** je predstavljen nizom jedinica i nula, od kojih svake dve cifre predstavljaju jedan pravougaonik:
-* Prva cifra predstavlja redni broj prafougaonika 
+* Prva cifra predstavlja redni broj pravougaonika 
 * Druga cifra predstavlja da li je pravougaonik rotiran (1 da, 0 ne)
 
 Korišćena **heuristika** za dekodiranje hromozoma je *MaxRects* - *Best Area Fit* varijanta. Vodi spisak najvećih pravougaonika slobodnog prostora koji ažurira svaki put kada postavi neki pravougaonik. 

@@ -8,6 +8,10 @@ Student: SV54-2021 Ivanov Maša
 
 Problem se sastoji iz postavljanja pravougaonika dimenzija (w,h) na pravougaonu površinu dimenzija (W,H). Pravougaonici koji se postavljaju ne smeju da se preklapaju i dozvoljeno je njihovo rotiranje za 90 stepeni. Cilj je da se postave pravougaonici tako da ostane što manje slobodnog mesta na površini. Postavljanje svih pravougaonika nije obavezno. 
 
+### Doprinos
+
+Cilj rada je razvoj *open source* biblioteke u *Rust*-u koja može da posluži kao osnova za dalja istraživanja i primene u oblasti 2D optimizacije sečenja i pakovanja (*cutting & packing*). Za razliku od postojećih implementacija, postoji mogućnost eksplicitnog odabira heuristike i poređenja performansi različitih heurističkih pristupa. Pored toga, biblioteka obezbeđuje metrike za evaluaciju (kao što su iskorišćenost materijala, broj iskorišćenih pravougaonika i vreme izvršavanja), čime se olakšava upoređivanje i analiza rezultata.
+
 ### Metode rešavanja
 
 Rešenje je implementirano u programskom jeziku *Rust*. Za implementaciju se koristi **evolutivni algoritam**. 

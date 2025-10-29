@@ -16,9 +16,11 @@ Cilj rada je razvoj *open source* biblioteke u *Rust*-u koja može da posluži k
 
 Rešenje je implementirano u programskom jeziku *Rust*. Za implementaciju se koristi **evolutivni algoritam**. 
 
-**Hromozom** je predstavljen nizom jedinica i nula, od kojih svake dve cifre predstavljaju jedan pravougaonik:
-* Prva cifra predstavlja redni broj pravougaonika 
-* Druga cifra predstavlja da li je pravougaonik rotiran (1 da, 0 ne)
+**Hromozom** je predstavljen nizom jedinica i nula, od kojih svaka cifra predstavlja jedan pravougaonik:
+* 1 = pravougaonik se uključuje u raspored
+* 0 = pravougaonik se ne uključuje u raspored
+
+Rotacija (90°) se automatski određuje heuristikom tokom dekodiranja (bira se orijentacija koja daje najbolje iskorišćenje).
 
 Korišćena **heuristika** za dekodiranje hromozoma je *MaxRects* - *Best Area Fit* varijanta. Vodi spisak najvećih pravougaonika slobodnog prostora koji ažurira svaki put kada postavi neki pravougaonik. 
 
@@ -35,7 +37,7 @@ Biblioteka: `macroquad`
 Konačno rešenje, na kom je predstavljen optimalan raspored bi bilo vizuelno prikazano. 
 
 ### Performanse
-Posmatraju se vreme izvršavanja algoritma i količine *waste*-a u procentima, koji se dalje porede sa optimalnim rezultatima za zadate vrednosti materijala i pravougaonika. Ulazi koji se testiraju su *gcut1r*-*gcut17r*.
+Posmatraju se vreme izvršavanja algoritma i količine *waste*-a u procentima, koji se dalje porede sa optimalnim rezultatima za zadate vrednosti materijala i pravougaonika. Ulazi koji se testiraju su *gcut1r*-*gcut13r*.
 
 ### Diplomski deo
 Implementacija dodatnih heuristika za raspoređivanje:

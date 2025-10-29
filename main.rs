@@ -3,11 +3,12 @@ use ::rand::prelude::*;
 use ::rand::rng;
 use ::rand::rngs::ThreadRng;
 use rayon::prelude::*;
-use ::rand::SeedableRng; 
-use ::rand::rngs::SmallRng;
+//use ::rand::SeedableRng; 
+//use ::rand::rngs::SmallRng;
 use std::time::Instant;
 use serde_json::Value;
 use std::fs;
+use std::env; 
 
 #[derive(Clone, Copy, Debug)]
 struct Rect {
@@ -373,7 +374,7 @@ fn genetic_algorithm(
     let mut best_chromosome = Vec::new();
     let mut best_fitness = 0.0f32;
     
-    for iteration in 0..max_iterations {
+    for _iteration in 0..max_iterations {
         let ranked = rank_chromosomes(&population, problem);
 
         if ranked[0].1 > best_fitness {
@@ -487,6 +488,33 @@ fn load_problem_from_json(file_path: &str) -> Result<Problem, Box<dyn std::error
     })
 }
 
+fn get_problem() -> Problem {
+    let args: Vec<String> = env::args().collect();
+    
+    if args.len() > 1 && args[1] == "--file" {
+        if args.len() < 3 {
+            eprintln!("Error: --file flag requires a filename");
+            eprintln!("Usage: cargo run -- --file <filename.json>");
+            std::process::exit(1);
+        }
+        
+        let file_path = &args[2];
+        println!("Loading problem from file: {}", file_path);
+        
+        match load_problem_from_json(file_path) {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("Error loading JSON file '{}': {}", file_path, e);
+                std::process::exit(1);
+            }
+        }
+    } else {
+        eprintln!("Error: No input file specified.");
+        eprintln!("Usage: cargo run -- --file <filename.json>");
+        std::process::exit(1);
+    }
+}
+
 fn window_config() -> Conf {
     Conf {
         window_title: "2D-OKP-R Genetic Algorithm".to_owned(),
@@ -500,28 +528,7 @@ fn window_config() -> Conf {
 #[macroquad::main(window_config)]
 async fn main() {
     let mut rng = rng();
-
-    let problem = match load_problem_from_json("json/3.json") {
-        Ok(p) => p,
-        Err(e) => {
-            eprintln!("Error loading JSON: {}", e);
-            eprintln!("Using default problem...");
-            Problem {
-                bin_width: 150,
-                bin_height: 80,
-                rectangles: vec![
-                    Rect::new_unplaced(50, 30),
-                    Rect::new_unplaced(40, 40),
-                    Rect::new_unplaced(30, 20),
-                    Rect::new_unplaced(60, 25),
-                    Rect::new_unplaced(35, 35),
-                    Rect::new_unplaced(45, 50),
-                    Rect::new_unplaced(25, 25),
-                    Rect::new_unplaced(55, 30),
-                ],
-            }
-        }
-    };
+    let problem = get_problem();
     
     println!("Bin: {}x{}", problem.bin_width, problem.bin_height);
     println!("Rectangles to pack: {}", problem.rectangles.len());
@@ -531,7 +538,7 @@ async fn main() {
     let (best_chromosome, best_fitness) = genetic_algorithm(
         &problem,
         100,   // population_size
-        0.05,  // mutation_rate
+        0.1,  // mutation_rate
         0.1,   // elitism_rate
         200,   // max_iterations
         &mut rng,

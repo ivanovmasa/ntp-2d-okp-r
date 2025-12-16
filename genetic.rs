@@ -4,7 +4,7 @@ use rayon::prelude::*;
 //use ::rand::SeedableRng; 
 //use ::rand::rngs::SmallRng;
 
-use crate::{Problem, decode_chromosome};
+use crate::{Problem, Heuristic};
 
 pub fn generate_chromosome(len: usize, rng: &mut ThreadRng) -> Vec<u8> {
     let mut chromosome = vec![1u8; len];
@@ -139,11 +139,12 @@ pub fn elitism(parents: &[Vec<u8>], children: &[Vec<u8>], rate: f32, population_
 pub fn rank_chromosomes(
     population: &[Vec<u8>],
     problem: &Problem,
+    heuristic: Heuristic,
 ) -> Vec<(Vec<u8>, f32)> {
     let mut ranked: Vec<(Vec<u8>, f32)> = population
         .par_iter()
         .map(|chromosome| {
-            let (_, fitness) = decode_chromosome(chromosome, problem);
+            let (_, fitness) = heuristic.decode_chromosome(chromosome, problem);
             (chromosome.clone(), fitness)
         })
         .collect();
@@ -160,6 +161,7 @@ pub fn genetic_algorithm(
     elitism_rate: f32,
     max_iterations: usize,
     rng: &mut ThreadRng,
+    heuristic: Heuristic,
 ) -> (Vec<u8>, f32) {
     let mut population = generate_initial_chromosomes(
         problem.rectangles.len(),
@@ -171,7 +173,7 @@ pub fn genetic_algorithm(
     let mut best_fitness = 0.0f32;
     
     for _iteration in 0..max_iterations {
-        let ranked = rank_chromosomes(&population, problem);
+        let ranked = rank_chromosomes(&population, problem, heuristic);
 
         if ranked[0].1 > best_fitness {
             best_fitness = ranked[0].1;

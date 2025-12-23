@@ -108,22 +108,28 @@ fn find_best_skyline_position(
 
 fn calculate_fit(skyline: &[SkylineSegment], start_idx: usize, width: i32) -> (i32, i32) {
     let segment = &skyline[start_idx];
-    let mut x = segment.x;
-    let mut max_y = segment.y;
+    let start_x = segment.x;
+    let end_x = start_x + width;
+    let mut max_y = 0;
     let mut waste = 0;
     
-    let target_x = segment.x + width;
-    
-    for seg in &skyline[start_idx..] {
-        if x >= target_x {
-            break;
-        }
+    // Find all segments that the rectangle would overlap
+    for seg in skyline.iter() {
+        let seg_end = seg.x + seg.width;
         
-        let overlap_width = (seg.x + seg.width).min(target_x) - x.max(seg.x);
-        if overlap_width > 0 {
-            waste += overlap_width * (max_y - seg.y).abs();
-            max_y = max_y.max(seg.y);
-            x = seg.x + seg.width;
+        // Check if this segment overlaps with our rectangle's horizontal span
+        if seg.x < end_x && seg_end > start_x {
+            let overlap_start = seg.x.max(start_x);
+            let overlap_end = seg_end.min(end_x);
+            let overlap_width = overlap_end - overlap_start;
+            
+            if overlap_width > 0 {
+                // Calculate waste (the gap between current max_y and this segment)
+                if max_y > seg.y {
+                    waste += overlap_width * (max_y - seg.y);
+                }
+                max_y = max_y.max(seg.y);
+            }
         }
     }
     
@@ -131,61 +137,66 @@ fn calculate_fit(skyline: &[SkylineSegment], start_idx: usize, width: i32) -> (i
 }
 
 fn update_skyline(skyline: &mut Vec<SkylineSegment>, placed: &Rect) {
-    let new_segment = SkylineSegment {
-        x: placed.x,
-        y: placed.y + placed.height,
-        width: placed.width,
-    };
+    let placed_left = placed.x;
+    let placed_right = placed.x + placed.width;
+    let placed_top = placed.y + placed.height;
     
-    // Remove segments that are covered by the new rectangle
-    skyline.retain(|seg| {
-        let seg_end = seg.x + seg.width;
-        let placed_end = placed.x + placed.width;
-        
-        // Keep if no overlap or if extends beyond placed rect
-        seg_end <= placed.x || seg.x >= placed_end || seg.y > placed.y + placed.height
-    });
-    
-    // Split segments that partially overlap
-    let mut new_segments = Vec::new();
-    let placed_end = placed.x + placed.width;
+    let mut new_skyline = Vec::new();
     
     for seg in skyline.iter() {
-        let seg_end = seg.x + seg.width;
+        let seg_right = seg.x + seg.width;
         
-        // Left part before placed rect
-        if seg.x < placed.x && seg_end > placed.x && seg.y < placed.y + placed.height {
-            new_segments.push(SkylineSegment {
-                x: seg.x,
-                y: seg.y,
-                width: placed.x - seg.x,
-            });
+        // Segment is completely to the left of placed rectangle
+        if seg_right <= placed_left {
+            new_skyline.push(seg.clone());
         }
-        
-        // Right part after placed rect
-        if seg.x < placed_end && seg_end > placed_end && seg.y < placed.y + placed.height {
-            new_segments.push(SkylineSegment {
-                x: placed_end,
-                y: seg.y,
-                width: seg_end - placed_end,
-            });
+        // Segment is completely to the right of placed rectangle
+        else if seg.x >= placed_right {
+            new_skyline.push(seg.clone());
+        }
+        // Segment overlaps with placed rectangle horizontally
+        else {
+            // Left portion of segment (before placed rectangle)
+            if seg.x < placed_left {
+                new_skyline.push(SkylineSegment {
+                    x: seg.x,
+                    y: seg.y,
+                    width: placed_left - seg.x,
+                });
+            }
+            
+            // Right portion of segment (after placed rectangle)
+            if seg_right > placed_right {
+                new_skyline.push(SkylineSegment {
+                    x: placed_right,
+                    y: seg.y,
+                    width: seg_right - placed_right,
+                });
+            }
         }
     }
     
-    skyline.extend(new_segments);
-    skyline.push(new_segment);
-    skyline.sort_by_key(|seg| seg.x);
+    // Add the new segment on top of the placed rectangle
+    new_skyline.push(SkylineSegment {
+        x: placed_left,
+        y: placed_top,
+        width: placed.width,
+    });
     
-    // Merge adjacent segments at same height
+    // Sort by x position
+    new_skyline.sort_by_key(|seg| seg.x);
+    
+    // Merge adjacent segments at the same height
     let mut merged: Vec<SkylineSegment> = Vec::new();
-    for seg in skyline.iter() {
+    for seg in new_skyline {
         if let Some(last) = merged.last_mut() {
             if last.y == seg.y && last.x + last.width == seg.x {
                 last.width += seg.width;
                 continue;
             }
         }
-        merged.push(seg.clone());
+        merged.push(seg);
     }
+    
     *skyline = merged;
 }

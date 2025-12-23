@@ -267,7 +267,7 @@ async fn main() {
         match menu_state {
             MenuState::MainMenu => {
                 // Title
-                draw_text("2D-OKP-R Solver", 350.0, 100.0, 40.0, BLACK);
+                draw_text("2D-OKP-R Solver", 375.0, 100.0, 40.0, BLACK);
                 draw_text("Choose input method:", 380.0, 180.0, 25.0, DARKGRAY);
                 
                 // Buttons
@@ -699,11 +699,13 @@ async fn main() {
                     // Draw fitness bars
                     if !comparison_results.is_empty() {
                         let max_fitness = comparison_results.iter().map(|r| r.fitness).fold(0.0f32, f32::max);
-                        let bar_width = graph_width / (comparison_results.len() as f32 * 1.5);
-                        let bar_spacing = bar_width * 0.5;
+                        let bar_width = (graph_width * 0.7) / comparison_results.len() as f32;
+                        let bar_spacing = bar_width * 0.4;
+                        let total_bars_width = comparison_results.len() as f32 * bar_width + (comparison_results.len() as f32 - 1.0) * bar_spacing;
+                        let left_padding = (graph_width - total_bars_width) / 2.0;
                         
                         for (i, result) in comparison_results.iter().enumerate() {
-                            let bar_x = fitness_graph_x + bar_spacing + i as f32 * (bar_width + bar_spacing);
+                            let bar_x = fitness_graph_x + left_padding + i as f32 * (bar_width + bar_spacing);
                             let bar_height = (result.fitness / max_fitness.max(1.0)) * (graph_height - 40.0);
                             let bar_y = graph_y + graph_height - bar_height - 20.0;
                             
@@ -733,11 +735,13 @@ async fn main() {
                     // Draw time bars
                     if !comparison_results.is_empty() {
                         let max_time = comparison_results.iter().map(|r| r.time_seconds).fold(0.0f64, f64::max);
-                        let bar_width = graph_width / (comparison_results.len() as f32 * 1.5);
-                        let bar_spacing = bar_width * 0.5;
+                        let bar_width = (graph_width * 0.7) / comparison_results.len() as f32;
+                        let bar_spacing = bar_width * 0.4;
+                        let total_bars_width = comparison_results.len() as f32 * bar_width + (comparison_results.len() as f32 - 1.0) * bar_spacing;
+                        let left_padding = (graph_width - total_bars_width) / 2.0;
                         
                         for (i, result) in comparison_results.iter().enumerate() {
-                            let bar_x = time_graph_x + bar_spacing + i as f32 * (bar_width + bar_spacing);
+                            let bar_x = time_graph_x + left_padding + i as f32 * (bar_width + bar_spacing);
                             let bar_height = (result.time_seconds / max_time.max(0.001)) as f32 * (graph_height - 40.0);
                             let bar_y = graph_y + graph_height - bar_height - 20.0;
                             

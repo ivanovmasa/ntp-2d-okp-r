@@ -33,7 +33,7 @@ pub fn decode_chromosome(
             
             if within_bounds && no_overlap {
                 placed_rects.push(placed_rect);
-                split_free_rect(&mut free_rects, best_idx, &placed_rect, problem.bin_width, problem.bin_height);  
+                split_all_free_rects(&mut free_rects, &placed_rect);  
                 prune_free_rects(&mut free_rects);
             }
         }
@@ -54,6 +54,8 @@ fn find_best_area_fit(
     rect_height: i32,
 ) -> Option<(usize, Rect)> {
     let mut best_idx = None;
+    let mut best_short_side_fit = i32::MAX;
+    let mut best_long_side_fit = i32::MAX;
     let mut best_area_diff = i32::MAX;
     let mut best_rect = None;
     
@@ -66,9 +68,17 @@ fn find_best_area_fit(
                 height: rect_height,
             };
             
+            let leftover_horiz = free_rect.width - rect_width;
+            let leftover_vert = free_rect.height - rect_height;
+            let short_side_fit = leftover_horiz.min(leftover_vert);
+            let long_side_fit = leftover_horiz.max(leftover_vert);
             let area_diff = free_rect.area() - (rect_width * rect_height);
             
-            if area_diff < best_area_diff {
+            if short_side_fit < best_short_side_fit || 
+               (short_side_fit == best_short_side_fit && long_side_fit < best_long_side_fit) ||
+               (short_side_fit == best_short_side_fit && long_side_fit == best_long_side_fit && area_diff < best_area_diff) {
+                best_short_side_fit = short_side_fit;
+                best_long_side_fit = long_side_fit;
                 best_area_diff = area_diff;
                 best_idx = Some(idx);
                 best_rect = Some(placed);
@@ -83,9 +93,17 @@ fn find_best_area_fit(
                 height: rect_width,  
             };
         
+            let leftover_horiz = free_rect.width - rect_height;
+            let leftover_vert = free_rect.height - rect_width;
+            let short_side_fit = leftover_horiz.min(leftover_vert);
+            let long_side_fit = leftover_horiz.max(leftover_vert);
             let area_diff = free_rect.area() - (rect_width * rect_height);
             
-            if area_diff < best_area_diff {
+            if short_side_fit < best_short_side_fit || 
+               (short_side_fit == best_short_side_fit && long_side_fit < best_long_side_fit) ||
+               (short_side_fit == best_short_side_fit && long_side_fit == best_long_side_fit && area_diff < best_area_diff) {
+                best_short_side_fit = short_side_fit;
+                best_long_side_fit = long_side_fit;
                 best_area_diff = area_diff;
                 best_idx = Some(idx);
                 best_rect = Some(placed);
@@ -96,34 +114,59 @@ fn find_best_area_fit(
     best_idx.and_then(|idx| best_rect.map(|rect| (idx, rect)))
 }
 
-fn split_free_rect(free_rects: &mut Vec<Rect>, used_idx: usize, placed: &Rect, bin_width: i32, bin_height: i32) {  
-    let used_rect = free_rects.remove(used_idx);
-    
+fn split_all_free_rects(free_rects: &mut Vec<Rect>, placed: &Rect) {
     let mut new_rects = Vec::new();
+    let mut i = 0;
     
-    if placed.x + placed.width < used_rect.x + used_rect.width {
-        let new_rect = Rect {
-            x: placed.x + placed.width,
-            y: used_rect.y,
-            width: (used_rect.x + used_rect.width) - (placed.x + placed.width),
-            height: used_rect.height,
-        };
+    while i < free_rects.len() {
+        let free_rect = &free_rects[i];
         
-        if new_rect.x + new_rect.width <= bin_width && new_rect.y + new_rect.height <= bin_height {
-            new_rects.push(new_rect);
-        }
-    }
-    
-    if placed.y + placed.height < used_rect.y + used_rect.height {
-        let new_rect = Rect {
-            x: used_rect.x,
-            y: placed.y + placed.height,
-            width: used_rect.width,
-            height: (used_rect.y + used_rect.height) - (placed.y + placed.height),
-        };
-        
-        if new_rect.x + new_rect.width <= bin_width && new_rect.y + new_rect.height <= bin_height {
-            new_rects.push(new_rect);
+        // Check if the placed rectangle intersects with this free rectangle
+        if rectangles_overlap(placed, free_rect) {
+            let old_free = free_rects.remove(i);
+            
+            // Create up to 4 new free rectangles from the intersection
+            // Left side
+            if placed.x > old_free.x {
+                new_rects.push(Rect {
+                    x: old_free.x,
+                    y: old_free.y,
+                    width: placed.x - old_free.x,
+                    height: old_free.height,
+                });
+            }
+            
+            // Right side
+            if placed.x + placed.width < old_free.x + old_free.width {
+                new_rects.push(Rect {
+                    x: placed.x + placed.width,
+                    y: old_free.y,
+                    width: (old_free.x + old_free.width) - (placed.x + placed.width),
+                    height: old_free.height,
+                });
+            }
+            
+            // Top side
+            if placed.y > old_free.y {
+                new_rects.push(Rect {
+                    x: old_free.x,
+                    y: old_free.y,
+                    width: old_free.width,
+                    height: placed.y - old_free.y,
+                });
+            }
+            
+            // Bottom side
+            if placed.y + placed.height < old_free.y + old_free.height {
+                new_rects.push(Rect {
+                    x: old_free.x,
+                    y: placed.y + placed.height,
+                    width: old_free.width,
+                    height: (old_free.y + old_free.height) - (placed.y + placed.height),
+                });
+            }
+        } else {
+            i += 1;
         }
     }
     

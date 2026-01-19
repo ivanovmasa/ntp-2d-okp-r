@@ -38,6 +38,7 @@ pub struct AppState {
     pub bin_height_field: TextField,
     pub num_rects_field: TextField,
     pub scroll_offset: f32,
+    pub last_solve_time: f64,
 }
 
 impl AppState {
@@ -55,6 +56,7 @@ impl AppState {
             bin_height_field: TextField::new(320.0, 120.0, 140.0, 35.0, "Height"),
             num_rects_field: TextField::new(100.0, 220.0, 140.0, 35.0, "Count"),
             scroll_offset: 0.0,
+            last_solve_time: 0.0,
         }
     }
     
@@ -190,12 +192,14 @@ impl AppState {
                         self.selected_heuristic,
                     );
                     
-                    println!("GA took: {:.2}s", start.elapsed().as_secs_f64());
+                    let solve_time = start.elapsed().as_secs_f64();
+                    println!("GA took: {:.2}s", solve_time);
                     println!("Fitness: {:.2}%", fitness * 100.0);
                     
                     let (rects, _) = self.selected_heuristic.decode_chromosome(&best_chromosome, &p);
                     self.placed_rects = rects;
                     self.best_fitness = fitness;
+                    self.last_solve_time = solve_time;
                     self.problem = Some(p);
                     self.menu_state = MenuState::Solution;
                 }
@@ -422,12 +426,14 @@ impl AppState {
                         self.selected_heuristic,
                     );
                     
-                    println!("GA took: {:.2}s", start.elapsed().as_secs_f64());
+                    let solve_time = start.elapsed().as_secs_f64();
+                    println!("GA took: {:.2}s", solve_time);
                     println!("Fitness: {:.2}%", fitness * 100.0);
                     
                     let (rects, _) = self.selected_heuristic.decode_chromosome(&best_chromosome, &p);
                     self.placed_rects = rects;
                     self.best_fitness = fitness;
+                    self.last_solve_time = solve_time;
                     self.problem = Some(p);
                     self.menu_state = MenuState::Solution;
                 } else {
@@ -506,30 +512,42 @@ impl AppState {
                 let heuristics = [Heuristic::MaxRects, Heuristic::Skyline, Heuristic::Guillotine];
                 
                 for heuristic in &heuristics {
-                    let mut rng = rng();
-                    let start = Instant::now();
-                    
-                    let (best_chromosome, fitness) = genetic_algorithm(
-                        prob,
-                        100,
-                        0.1,
-                        0.1,
-                        200,
-                        &mut rng,
-                        *heuristic,
-                    );
-                    
-                    let time_seconds = start.elapsed().as_secs_f64();
-                    let (rects, _) = heuristic.decode_chromosome(&best_chromosome, prob);
-                    
-                    self.comparison_results.push(HeuristicResult {
-                        heuristic: *heuristic,
-                        fitness,
-                        time_seconds,
-                        placed_rects: rects,
-                    });
-                    
-                    println!("{}: {:.2}% in {:.2}s", heuristic.name(), fitness * 100.0, time_seconds);
+                    if *heuristic == self.selected_heuristic {
+                        // Reuse already-computed solution
+                        self.comparison_results.push(HeuristicResult {
+                            heuristic: *heuristic,
+                            fitness: self.best_fitness,
+                            time_seconds: self.last_solve_time,
+                            placed_rects: self.placed_rects.clone(),
+                        });
+                        println!("{}: {:.2}% in {:.2}s (cached)", heuristic.name(), self.best_fitness * 100.0, self.last_solve_time);
+                    } else {
+                        // Run GA for other heuristics
+                        let mut rng = rng();
+                        let start = Instant::now();
+                        
+                        let (best_chromosome, fitness) = genetic_algorithm(
+                            prob,
+                            100,
+                            0.1,
+                            0.1,
+                            200,
+                            &mut rng,
+                            *heuristic,
+                        );
+                        
+                        let time_seconds = start.elapsed().as_secs_f64();
+                        let (rects, _) = heuristic.decode_chromosome(&best_chromosome, prob);
+                        
+                        self.comparison_results.push(HeuristicResult {
+                            heuristic: *heuristic,
+                            fitness,
+                            time_seconds,
+                            placed_rects: rects,
+                        });
+                        
+                        println!("{}: {:.2}% in {:.2}s", heuristic.name(), fitness * 100.0, time_seconds);
+                    }
                 }
                 
                 self.menu_state = MenuState::Comparison;

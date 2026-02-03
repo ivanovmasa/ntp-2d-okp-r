@@ -20,7 +20,7 @@ pub fn decode_chromosome(
         
         let rect = &problem.rectangles[i];
         
-        if let Some((best_idx, placed_rect)) = find_best_area_fit(
+        if let Some((_best_idx, placed_rect)) = find_best_area_fit(
             &free_rects,
             rect.width,
             rect.height,

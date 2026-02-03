@@ -39,6 +39,7 @@ pub struct AppState {
     pub num_rects_field: TextField,
     pub scroll_offset: f32,
     pub last_solve_time: f64,
+    pub auto_select_heuristic: bool,
 }
 
 impl AppState {
@@ -57,6 +58,7 @@ impl AppState {
             num_rects_field: TextField::new(100.0, 220.0, 140.0, 35.0, "Count"),
             scroll_offset: 0.0,
             last_solve_time: 0.0,
+            auto_select_heuristic: true,
         }
     }
     
@@ -82,7 +84,7 @@ impl AppState {
         manual_button.draw();
         
         if json_button.is_clicked() {
-            self.menu_state = MenuState::HeuristicSelection;
+            self.menu_state = MenuState::JsonSelection;
         }
         
         if manual_button.is_clicked() {
@@ -110,30 +112,44 @@ impl AppState {
         
         for (i, (heuristic, color)) in heuristics.iter().enumerate() {
             let y = start_y + i as f32 * (button_height + spacing);
-            let is_selected = self.selected_heuristic == *heuristic;
+            let is_selected = self.selected_heuristic == *heuristic && !self.auto_select_heuristic;
             let button_color = if is_selected { *color } else { DARKGRAY };
             let button = Button::new(250.0, y, 500.0, button_height, heuristic.name(), button_color);
             button.draw();
             
             if button.is_clicked() {
                 self.selected_heuristic = *heuristic;
+                self.auto_select_heuristic = false;
             }
         }
         
-        let next_button = Button::new(250.0, 720.0, 180.0, 50.0, "Next", GREEN);
+        let is_auto_selected = self.auto_select_heuristic;
+        let auto_button_color = if is_auto_selected { ORANGE } else { DARKGRAY };
+        let choose_button = Button::new(250.0, start_y + 3.0 * (button_height + spacing), 500.0, button_height, "Choose for me (Test All)", auto_button_color);
+        choose_button.draw();
+        
+        if choose_button.is_clicked() {
+            self.auto_select_heuristic = true;
+        }
+        
+        let solve_button = Button::new(250.0, 720.0, 180.0, 50.0, "Solve", GREEN);
         let back_button = Button::new(570.0, 720.0, 180.0, 50.0, "Back", RED);
         
-        next_button.draw();
+        solve_button.draw();
         back_button.draw();
         
-        draw_text(&format!("Selected: {}", self.selected_heuristic.name()), 280.0, 120.0, 20.0, BLUE);
+        if self.auto_select_heuristic {
+            draw_text("Selected: Auto (will test all heuristics)", 280.0, 120.0, 20.0, ORANGE);
+        } else {
+            draw_text(&format!("Selected: {}", self.selected_heuristic.name()), 280.0, 120.0, 20.0, BLUE);
+        }
         
-        if next_button.is_clicked() {
-            self.menu_state = MenuState::JsonSelection;
+        if solve_button.is_clicked() {
+            self.solve_problem();
         }
         
         if back_button.is_clicked() {
-            self.menu_state = MenuState::MainMenu;
+            self.menu_state = MenuState::JsonSelection;
         }
     }
     
@@ -178,30 +194,8 @@ impl AppState {
                     println!("Loaded problem from json/{}.json", self.selected_json);
                     println!("Bin: {}x{}", p.bin_width, p.bin_height);
                     println!("Rectangles: {}", p.rectangles.len());
-                    println!("Heuristic: {}", self.selected_heuristic.name());
-                    
-                    let mut rng = rng();
-                    let start = Instant::now();
-                    let (best_chromosome, fitness) = genetic_algorithm(
-                        &p,
-                        100,
-                        0.1,
-                        0.1,
-                        200,
-                        &mut rng,
-                        self.selected_heuristic,
-                    );
-                    
-                    let solve_time = start.elapsed().as_secs_f64();
-                    println!("GA took: {:.2}s", solve_time);
-                    println!("Fitness: {:.2}%", fitness * 100.0);
-                    
-                    let (rects, _) = self.selected_heuristic.decode_chromosome(&best_chromosome, &p);
-                    self.placed_rects = rects;
-                    self.best_fitness = fitness;
-                    self.last_solve_time = solve_time;
                     self.problem = Some(p);
-                    self.menu_state = MenuState::Solution;
+                    self.menu_state = MenuState::HeuristicSelection;
                 }
                 Err(e) => {
                     eprintln!("Error loading json/{}.json: {}", self.selected_json, e);
@@ -215,28 +209,33 @@ impl AppState {
     }
     
     fn render_manual_input(&mut self) {
-        draw_text("Manual Input", 400.0, 50.0, 30.0, BLACK);
+        let left_margin = 80.0;
+        let content_width = screen_width() - 2.0 * left_margin;
+        
+        draw_text("Manual Input", 400.0, 40.0, 30.0, BLACK);
         
         let tab_pressed = is_key_pressed(KeyCode::Tab);
         
-        draw_text("Bin dimensions:", 100.0, 110.0, 20.0, BLACK);
+        draw_text("Bin dimensions:", left_margin, 90.0, 20.0, BLACK);
         
-        self.bin_width_field.x = 100.0;
-        self.bin_width_field.y = 120.0;
+        self.bin_width_field.x = left_margin;
+        self.bin_width_field.y = 100.0;
         let bin_width_was_active = self.bin_width_field.is_active && tab_pressed;
         self.bin_width_field.update();
         self.bin_width_field.draw();
         
-        self.bin_height_field.x = 320.0;
-        self.bin_height_field.y = 120.0;
+        self.bin_height_field.x = left_margin + 220.0;
+        self.bin_height_field.y = 100.0;
         let bin_height_was_active = self.bin_height_field.is_active && tab_pressed;
         self.bin_height_field.update();
         self.bin_height_field.draw();
         
-        draw_text("W", 260.0, 145.0, 18.0, GRAY);
-        draw_text("H", 480.0, 145.0, 18.0, GRAY);
+        draw_text("W", left_margin + 160.0, 125.0, 18.0, GRAY);
+        draw_text("H", left_margin + 380.0, 125.0, 18.0, GRAY);
         
-        draw_text("Number of rectangles:", 100.0, 210.0, 20.0, BLACK);
+        draw_text("Number of rectangles:", left_margin, 165.0, 20.0, BLACK);
+        self.num_rects_field.x = left_margin;
+        self.num_rects_field.y = 175.0;
         let num_rects_was_active = self.num_rects_field.is_active && tab_pressed;
         self.num_rects_field.update();
         self.num_rects_field.draw();
@@ -270,16 +269,18 @@ impl AppState {
             }
         }
         
-        let scroll_area_y = 300.0;
-        let scroll_area_height = 380.0;
+        draw_text("Rectangle dimensions:", left_margin, 240.0, 20.0, BLACK);
+        
+        let scroll_area_y = 250.0;
+        let scroll_area_height = 350.0;
+        let scroll_area_width = content_width;
         let max_visible = 6;
         let item_height = 55.0;
         
-        draw_rectangle(50.0, scroll_area_y, 900.0, scroll_area_height, Color::new(0.95, 0.95, 0.95, 1.0));
-        draw_rectangle_lines(50.0, scroll_area_y, 900.0, scroll_area_height, 2.0, DARKGRAY);
+        draw_rectangle(left_margin, scroll_area_y, scroll_area_width, scroll_area_height, Color::new(0.95, 0.95, 0.95, 1.0));
+        draw_rectangle_lines(left_margin, scroll_area_y, scroll_area_width, scroll_area_height, 2.0, DARKGRAY);
         
         if !self.manual_rects.is_empty() {
-            draw_text("Rectangle dimensions:", 50.0, scroll_area_y - 10.0, 20.0, BLACK);
             
             let total_rects = self.manual_rects.len();
             let scroll_start = self.scroll_offset as usize;
@@ -300,16 +301,16 @@ impl AppState {
                 let (width_field, height_field) = &mut self.manual_rects[idx];
                 let display_y = scroll_area_y + 15.0 + (idx - scroll_start) as f32 * item_height;
                 
-                draw_text(&format!("Rect {}:", idx + 1), 70.0, display_y + 25.0, 18.0, BLACK);
+                draw_text(&format!("Rect {}:", idx + 1), left_margin + 20.0, display_y + 25.0, 18.0, BLACK);
                 
-                width_field.x = 150.0;
+                width_field.x = left_margin + 100.0;
                 width_field.y = display_y;
                 width_field.update();
                 width_field.draw();
                 
-                draw_text("×", 300.0, display_y + 25.0, 20.0, GRAY);
+                draw_text("×", left_margin + 250.0, display_y + 25.0, 20.0, GRAY);
                 
-                height_field.x = 320.0;
+                height_field.x = left_margin + 270.0;
                 height_field.y = display_y;
                 height_field.update();
                 height_field.draw();
@@ -333,7 +334,7 @@ impl AppState {
             }
             
             if self.manual_rects.len() > max_visible {
-                let scrollbar_x = 960.0;
+                let scrollbar_x = left_margin + scroll_area_width - 25.0;
                 let scrollbar_height = scroll_area_height - 20.0;
                 let thumb_height = (max_visible as f32 / self.manual_rects.len() as f32) * scrollbar_height;
                 let thumb_y = scroll_area_y + 10.0 + (self.scroll_offset / (self.manual_rects.len() - max_visible) as f32) * (scrollbar_height - thumb_height);
@@ -350,16 +351,31 @@ impl AppState {
                 
                 let wheel = mouse_wheel().1;
                 if wheel != 0.0 {
-                    self.scroll_offset = (self.scroll_offset - wheel).max(0.0).min((self.manual_rects.len() - max_visible) as f32);
+                    let scroll_amount = if wheel > 0.0 { -0.7 } else { 0.7 };
+                    self.scroll_offset = (self.scroll_offset + scroll_amount).max(0.0).min((self.manual_rects.len() - max_visible) as f32);
                 }
             }
         } else {
-            draw_text("Enter number of rectangles above", 350.0, 480.0, 18.0, GRAY);
+            draw_text("Enter number of rectangles above", (screen_width() - 280.0) / 2.0, scroll_area_y + scroll_area_height / 2.0, 18.0, GRAY);
         }
         
-        draw_text("Select Heuristic:", 100.0, 700.0, 18.0, BLACK);
+        draw_text("Select Heuristic:", left_margin, 625.0, 18.0, BLACK);
         
-        let heuristic_button_y = 720.0;
+        let heuristic_button_y = 645.0;
+        let button_width = 145.0;
+        let button_height = 45.0;
+        let button_spacing = 10.0;
+        
+        // Choose for me button first
+        let is_auto_selected = self.auto_select_heuristic;
+        let auto_button_color = if is_auto_selected { ORANGE } else { DARKGRAY };
+        let auto_button = Button::new(left_margin, heuristic_button_y, button_width, button_height, "Choose for me", auto_button_color);
+        auto_button.draw();
+        
+        if auto_button.is_clicked() {
+            self.auto_select_heuristic = true;
+        }
+        
         let heuristics = [
             (Heuristic::MaxRects, "MaxRects", DARKBLUE),
             (Heuristic::Skyline, "Skyline", DARKGREEN),
@@ -367,19 +383,20 @@ impl AppState {
         ];
         
         for (i, (heuristic, name, color)) in heuristics.iter().enumerate() {
-            let button_x = 100.0 + i as f32 * 160.0;
-            let is_selected = self.selected_heuristic == *heuristic;
+            let button_x = left_margin + (i + 1) as f32 * (button_width + button_spacing);
+            let is_selected = self.selected_heuristic == *heuristic && !self.auto_select_heuristic;
             let button_color = if is_selected { *color } else { DARKGRAY };
-            let button = Button::new(button_x, heuristic_button_y, 150.0, 40.0, name, button_color);
+            let button = Button::new(button_x, heuristic_button_y, button_width, button_height, name, button_color);
             button.draw();
             
             if button.is_clicked() {
                 self.selected_heuristic = *heuristic;
+                self.auto_select_heuristic = false;
             }
         }
         
-        let solve_button = Button::new(600.0, 720.0, 150.0, 50.0, "Solve", GREEN);
-        let back_button = Button::new(770.0, 720.0, 150.0, 50.0, "Back", RED);
+        let solve_button = Button::new(screen_width() - left_margin - 320.0, 720.0, 150.0, button_height, "Solve", GREEN);
+        let back_button = Button::new(screen_width() - left_margin - 150.0, 720.0, 150.0, button_height, "Back", RED);
         
         solve_button.draw();
         back_button.draw();
@@ -414,28 +431,8 @@ impl AppState {
                     println!("Bin: {}x{}", p.bin_width, p.bin_height);
                     println!("Rectangles: {}", p.rectangles.len());
                     
-                    let mut rng = rng();
-                    let start = Instant::now();
-                    let (best_chromosome, fitness) = genetic_algorithm(
-                        &p,
-                        100,
-                        0.1,
-                        0.1,
-                        200,
-                        &mut rng,
-                        self.selected_heuristic,
-                    );
-                    
-                    let solve_time = start.elapsed().as_secs_f64();
-                    println!("GA took: {:.2}s", solve_time);
-                    println!("Fitness: {:.2}%", fitness * 100.0);
-                    
-                    let (rects, _) = self.selected_heuristic.decode_chromosome(&best_chromosome, &p);
-                    self.placed_rects = rects;
-                    self.best_fitness = fitness;
-                    self.last_solve_time = solve_time;
                     self.problem = Some(p);
-                    self.menu_state = MenuState::Solution;
+                    self.solve_problem();
                 } else {
                     println!("Invalid input - please fill all fields with positive numbers");
                 }
@@ -555,6 +552,87 @@ impl AppState {
             
             if back_button.is_clicked() {
                 self.menu_state = MenuState::MainMenu;
+            }
+        }
+    }
+    
+    fn solve_problem(&mut self) {
+        if let Some(ref prob) = self.problem {
+            if self.auto_select_heuristic {
+                // Test all heuristics and pick the best one
+                println!("Testing all heuristics to find the best solution...");
+                
+                let heuristics = [Heuristic::MaxRects, Heuristic::Skyline, Heuristic::Guillotine];
+                let mut best_result: Option<HeuristicResult> = None;
+                
+                for heuristic in &heuristics {
+                    let mut rng = rng();
+                    let start = Instant::now();
+                    
+                    let (best_chromosome, fitness) = genetic_algorithm(
+                        prob,
+                        100,
+                        0.1,
+                        0.1,
+                        200,
+                        &mut rng,
+                        *heuristic,
+                    );
+                    
+                    let time_seconds = start.elapsed().as_secs_f64();
+                    let (rects, _) = heuristic.decode_chromosome(&best_chromosome, prob);
+                    
+                    println!("{}: {:.2}% in {:.2}s", heuristic.name(), fitness * 100.0, time_seconds);
+                    
+                    let result = HeuristicResult {
+                        heuristic: *heuristic,
+                        fitness,
+                        time_seconds,
+                        placed_rects: rects,
+                    };
+                    
+                    if let Some(ref current_best) = best_result {
+                        if fitness > current_best.fitness {
+                            best_result = Some(result);
+                        }
+                    } else {
+                        best_result = Some(result);
+                    }
+                }
+                
+                if let Some(result) = best_result {
+                    println!("Best heuristic: {} with {:.2}% fitness", result.heuristic.name(), result.fitness * 100.0);
+                    self.selected_heuristic = result.heuristic;
+                    self.placed_rects = result.placed_rects;
+                    self.best_fitness = result.fitness;
+                    self.last_solve_time = result.time_seconds;
+                    self.menu_state = MenuState::Solution;
+                }
+            } else {
+                // Use the selected heuristic
+                println!("Heuristic: {}", self.selected_heuristic.name());
+                
+                let mut rng = rng();
+                let start = Instant::now();
+                let (best_chromosome, fitness) = genetic_algorithm(
+                    prob,
+                    100,
+                    0.1,
+                    0.1,
+                    200,
+                    &mut rng,
+                    self.selected_heuristic,
+                );
+                
+                let solve_time = start.elapsed().as_secs_f64();
+                println!("GA took: {:.2}s", solve_time);
+                println!("Fitness: {:.2}%", fitness * 100.0);
+                
+                let (rects, _) = self.selected_heuristic.decode_chromosome(&best_chromosome, prob);
+                self.placed_rects = rects;
+                self.best_fitness = fitness;
+                self.last_solve_time = solve_time;
+                self.menu_state = MenuState::Solution;
             }
         }
     }

@@ -40,6 +40,7 @@ pub struct AppState {
     pub scroll_offset: f32,
     pub last_solve_time: f64,
     pub auto_select_heuristic: bool,
+    pub custom_json_path: Option<String>,
 }
 
 impl AppState {
@@ -58,8 +59,7 @@ impl AppState {
             num_rects_field: TextField::new(100.0, 220.0, 140.0, 35.0, "Count"),
             scroll_offset: 0.0,
             last_solve_time: 0.0,
-            auto_select_heuristic: true,
-        }
+            auto_select_heuristic: true,            custom_json_path: None,        }
     }
     
     pub fn render(&mut self) {
@@ -104,6 +104,16 @@ impl AppState {
         let button_height = 70.0;
         let spacing = 20.0;
         
+        // Choose for me button first
+        let is_auto_selected = self.auto_select_heuristic;
+        let auto_button_color = if is_auto_selected { ORANGE } else { DARKGRAY };
+        let choose_button = Button::new(250.0, start_y, 500.0, button_height, "Choose for me (Test All)", auto_button_color);
+        choose_button.draw();
+        
+        if choose_button.is_clicked() {
+            self.auto_select_heuristic = true;
+        }
+        
         let heuristics = [
             (Heuristic::MaxRects, DARKBLUE),
             (Heuristic::Skyline, DARKGREEN),
@@ -111,7 +121,7 @@ impl AppState {
         ];
         
         for (i, (heuristic, color)) in heuristics.iter().enumerate() {
-            let y = start_y + i as f32 * (button_height + spacing);
+            let y = start_y + (i + 1) as f32 * (button_height + spacing);
             let is_selected = self.selected_heuristic == *heuristic && !self.auto_select_heuristic;
             let button_color = if is_selected { *color } else { DARKGRAY };
             let button = Button::new(250.0, y, 500.0, button_height, heuristic.name(), button_color);
@@ -123,17 +133,10 @@ impl AppState {
             }
         }
         
-        let is_auto_selected = self.auto_select_heuristic;
-        let auto_button_color = if is_auto_selected { ORANGE } else { DARKGRAY };
-        let choose_button = Button::new(250.0, start_y + 3.0 * (button_height + spacing), 500.0, button_height, "Choose for me (Test All)", auto_button_color);
-        choose_button.draw();
-        
-        if choose_button.is_clicked() {
-            self.auto_select_heuristic = true;
-        }
-        
-        let solve_button = Button::new(250.0, 720.0, 180.0, 50.0, "Solve", GREEN);
-        let back_button = Button::new(570.0, 720.0, 180.0, 50.0, "Back", RED);
+        let left_margin = 80.0;
+        let button_height_bottom = 45.0;
+        let solve_button = Button::new(screen_width() - left_margin - 320.0, 720.0, 150.0, button_height_bottom, "Solve", GREEN);
+        let back_button = Button::new(screen_width() - left_margin - 150.0, 720.0, 150.0, button_height_bottom, "Back", RED);
         
         solve_button.draw();
         back_button.draw();
@@ -156,13 +159,16 @@ impl AppState {
     fn render_json_selection(&mut self) {
         draw_text("Select JSON File (1-13)", 350.0, 80.0, 30.0, BLACK);
         
-        let start_x = 250.0;
-        let start_y = 150.0;
-        let button_width = 200.0;
-        let button_height = 60.0;
+        let button_width = 260.0;
+        let button_height = 75.0;
         let spacing_x = 20.0;
         let spacing_y = 15.0;
-        let columns = 2;
+        let columns = 3;
+        
+        // Calculate total width and center the block
+        let total_width = columns as f32 * button_width + (columns - 1) as f32 * spacing_x;
+        let start_x = (screen_width() - total_width) / 2.0;
+        let start_y = 180.0;
         
         for i in 1..=13 {
             let col = (i - 1) % columns;
@@ -171,34 +177,77 @@ impl AppState {
             let x = start_x + col as f32 * (button_width + spacing_x);
             let y = start_y + row as f32 * (button_height + spacing_y);
             
-            let color = if self.selected_json == i { BLUE } else { DARKGRAY };
+            let color = if self.selected_json == i && self.custom_json_path.is_none() { BLUE } else { DARKGRAY };
             let button = Button::new(x, y, button_width, button_height, &format!("Problem {}", i), color);
             button.draw();
             
             if button.is_clicked() {
                 self.selected_json = i;
+                self.custom_json_path = None;
             }
         }
         
-        let solve_button = Button::new(250.0, 720.0, 180.0, 50.0, "Solve", GREEN);
-        let back_button = Button::new(570.0, 720.0, 180.0, 50.0, "Back", RED);
+        // Add "Upload Custom JSON" button next to Problem 13
+        let upload_x = start_x + 1.0 * (button_width + spacing_x);
+        let upload_y = start_y + 4.0 * (button_height + spacing_y);
+        let upload_color = if self.custom_json_path.is_some() { ORANGE } else { Color::from_rgba(100, 180, 100, 255) };
+        let upload_button = Button::new(upload_x, upload_y, button_width, button_height, "Upload Custom JSON", upload_color);
+        upload_button.draw();
+        
+        if upload_button.is_clicked() {
+            // Try to open file dialog
+            if let Some(path) = rfd::FileDialog::new()
+                .add_filter("JSON files", &["json"])
+                .pick_file() {
+                self.custom_json_path = Some(path.display().to_string());
+                self.selected_json = 0; // Use 0 to indicate custom file
+            }
+        }
+        
+        let left_margin = 80.0;
+        let button_height = 45.0;
+        let solve_button = Button::new(screen_width() - left_margin - 320.0, 720.0, 150.0, button_height, "Solve", GREEN);
+        let back_button = Button::new(screen_width() - left_margin - 150.0, 720.0, 150.0, button_height, "Back", RED);
         
         solve_button.draw();
         back_button.draw();
         
-        draw_text(&format!("Selected: Problem {}", self.selected_json), 350.0, 120.0, 20.0, BLUE);
+        // Display selected file info
+        if let Some(custom_path) = &self.custom_json_path {
+            let filename = std::path::Path::new(custom_path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("Custom file");
+            draw_text(&format!("Selected: {}", filename), start_x, 140.0, 20.0, ORANGE);
+        } else {
+            draw_text(&format!("Selected: Problem {}", self.selected_json), start_x, 140.0, 20.0, BLUE);
+        }
         
         if solve_button.is_clicked() {
-            match load_problem_from_json(self.selected_json) {
+            let result = if let Some(custom_path) = &self.custom_json_path {
+                load_problem_from_custom_json(custom_path)
+            } else {
+                load_problem_from_json(self.selected_json)
+            };
+            
+            match result {
                 Ok(p) => {
-                    println!("Loaded problem from json/{}.json", self.selected_json);
+                    if let Some(custom_path) = &self.custom_json_path {
+                        println!("Loaded problem from custom file: {}", custom_path);
+                    } else {
+                        println!("Loaded problem from json/{}.json", self.selected_json);
+                    }
                     println!("Bin: {}x{}", p.bin_width, p.bin_height);
                     println!("Rectangles: {}", p.rectangles.len());
                     self.problem = Some(p);
                     self.menu_state = MenuState::HeuristicSelection;
                 }
                 Err(e) => {
-                    eprintln!("Error loading json/{}.json: {}", self.selected_json, e);
+                    if let Some(custom_path) = &self.custom_json_path {
+                        eprintln!("Error loading custom file {}: {}", custom_path, e);
+                    } else {
+                        eprintln!("Error loading json/{}.json: {}", self.selected_json, e);
+                    }
                 }
             }
         }
@@ -764,7 +813,9 @@ impl AppState {
                 }
             }
             
-            let back_button = Button::new(screen_width() / 2.0 - 75.0, 750.0, 150.0, 40.0, "Back", RED);
+            let left_margin = 80.0;
+            let button_height = 45.0;
+            let back_button = Button::new(screen_width() - left_margin - 150.0, 720.0, 150.0, button_height, "Back", RED);
             back_button.draw();
             
             if back_button.is_clicked() {
@@ -777,6 +828,32 @@ impl AppState {
 pub fn load_problem_from_json(file_num: usize) -> Result<Problem, Box<dyn std::error::Error>> {
     let file_path = format!("json/{}.json", file_num);
     let json_content = fs::read_to_string(&file_path)?;
+    let data: Value = serde_json::from_str(&json_content)?;
+    let bin_width = data["Objects"][0]["Length"].as_i64().unwrap() as i32;
+    let bin_height = data["Objects"][0]["Height"].as_i64().unwrap() as i32;
+    
+    let mut rectangles = Vec::new();
+    if let Some(items) = data["Items"].as_array() {
+        for item in items {
+            let width = item["Length"].as_i64().unwrap() as i32;
+            let height = item["Height"].as_i64().unwrap() as i32;
+            let demand = item["Demand"].as_i64().unwrap_or(1) as i32;
+
+            for _ in 0..demand {
+                rectangles.push(Rect::new_unplaced(width, height));
+            }
+        }
+    }
+    
+    Ok(Problem {
+        bin_width,
+        bin_height,
+        rectangles,
+    })
+}
+
+pub fn load_problem_from_custom_json(file_path: &str) -> Result<Problem, Box<dyn std::error::Error>> {
+    let json_content = fs::read_to_string(file_path)?;
     let data: Value = serde_json::from_str(&json_content)?;
     let bin_width = data["Objects"][0]["Length"].as_i64().unwrap() as i32;
     let bin_height = data["Objects"][0]["Height"].as_i64().unwrap() as i32;

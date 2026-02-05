@@ -41,6 +41,7 @@ pub struct AppState {
     pub last_solve_time: f64,
     pub auto_select_heuristic: bool,
     pub custom_json_path: Option<String>,
+    pub came_from_manual: bool,
 }
 
 impl AppState {
@@ -59,7 +60,10 @@ impl AppState {
             num_rects_field: TextField::new(100.0, 220.0, 140.0, 35.0, "Count"),
             scroll_offset: 0.0,
             last_solve_time: 0.0,
-            auto_select_heuristic: true,            custom_json_path: None,        }
+            auto_select_heuristic: true,
+            custom_json_path: None,
+            came_from_manual: false,
+        }
     }
     
     pub fn render(&mut self) {
@@ -240,6 +244,7 @@ impl AppState {
                     println!("Bin: {}x{}", p.bin_width, p.bin_height);
                     println!("Rectangles: {}", p.rectangles.len());
                     self.problem = Some(p);
+                    self.came_from_manual = false;
                     self.menu_state = MenuState::HeuristicSelection;
                 }
                 Err(e) => {
@@ -444,11 +449,21 @@ impl AppState {
             }
         }
         
+        let clear_button = Button::new(screen_width() - left_margin - 490.0, 720.0, 150.0, button_height, "Clear", ORANGE);
         let solve_button = Button::new(screen_width() - left_margin - 320.0, 720.0, 150.0, button_height, "Solve", GREEN);
         let back_button = Button::new(screen_width() - left_margin - 150.0, 720.0, 150.0, button_height, "Back", RED);
         
+        clear_button.draw();
         solve_button.draw();
         back_button.draw();
+        
+        if clear_button.is_clicked() {
+            self.bin_width_field.text.clear();
+            self.bin_height_field.text.clear();
+            self.num_rects_field.text.clear();
+            self.manual_rects.clear();
+            self.scroll_offset = 0.0;
+        }
         
         if solve_button.is_clicked() {
             if let (Some(bin_w), Some(bin_h)) = (self.bin_width_field.parse_i32(), self.bin_height_field.parse_i32()) {
@@ -481,6 +496,7 @@ impl AppState {
                     println!("Rectangles: {}", p.rectangles.len());
                     
                     self.problem = Some(p);
+                    self.came_from_manual = true;
                     self.solve_problem();
                 } else {
                     println!("Invalid input - please fill all fields with positive numbers");
@@ -546,11 +562,13 @@ impl AppState {
             let heuristic_name = self.selected_heuristic.name().split(" ").next().unwrap_or("");
             draw_text(heuristic_name, info_x + 20.0, 230.0, 18.0, SKYBLUE);
             
-            let compare_button = Button::new(info_x + 25.0, screen_height() - 140.0, 150.0, 50.0, "Compare", ORANGE);
-            let back_button = Button::new(info_x + 25.0, screen_height() - 70.0, 150.0, 50.0, "Back", RED);
+            let compare_button = Button::new(info_x + 25.0, screen_height() - 210.0, 150.0, 50.0, "Compare", ORANGE);
+            let back_button = Button::new(info_x + 25.0, screen_height() - 140.0, 150.0, 50.0, "Back", RED);
+            let home_button = Button::new(info_x + 25.0, screen_height() - 70.0, 150.0, 50.0, "Home", DARKBLUE);
             
             compare_button.draw();
             back_button.draw();
+            home_button.draw();
             
             if compare_button.is_clicked() {
                 self.comparison_results.clear();
@@ -600,6 +618,14 @@ impl AppState {
             }
             
             if back_button.is_clicked() {
+                if self.came_from_manual {
+                    self.menu_state = MenuState::ManualInput;
+                } else {
+                    self.menu_state = MenuState::HeuristicSelection;
+                }
+            }
+            
+            if home_button.is_clicked() {
                 self.menu_state = MenuState::MainMenu;
             }
         }
@@ -815,8 +841,15 @@ impl AppState {
             
             let left_margin = 80.0;
             let button_height = 45.0;
+            let home_button = Button::new(screen_width() - left_margin - 320.0, 720.0, 150.0, button_height, "Home", DARKBLUE);
             let back_button = Button::new(screen_width() - left_margin - 150.0, 720.0, 150.0, button_height, "Back", RED);
+            
+            home_button.draw();
             back_button.draw();
+            
+            if home_button.is_clicked() {
+                self.menu_state = MenuState::MainMenu;
+            }
             
             if back_button.is_clicked() {
                 self.menu_state = MenuState::Solution;

@@ -63,43 +63,25 @@ fn find_best_skyline_position(
     let mut best_y = i32::MAX;
     let mut best_waste = i32::MAX;
     
-    // Try normal orientation
-    for (i, segment) in skyline.iter().enumerate() {
-        if segment.x + rect_width > bin_width {
-            continue;
-        }
-        
-        let (fit_y, waste) = calculate_fit(skyline, i, rect_width);
-        
-        if fit_y + rect_height <= bin_height && (fit_y < best_y || (fit_y == best_y && waste < best_waste)) {
-            best_y = fit_y;
-            best_waste = waste;
-            best_rect = Some(Rect {
-                x: segment.x,
-                y: fit_y,
-                width: rect_width,
-                height: rect_height,
-            });
-        }
-    }
-    
-    // Try rotated orientation (90 degrees)
-    for (i, segment) in skyline.iter().enumerate() {
-        if segment.x + rect_height > bin_width {
-            continue;
-        }
-        
-        let (fit_y, waste) = calculate_fit(skyline, i, rect_height);
-        
-        if fit_y + rect_width <= bin_height && (fit_y < best_y || (fit_y == best_y && waste < best_waste)) {
-            best_y = fit_y;
-            best_waste = waste;
-            best_rect = Some(Rect {
-                x: segment.x,
-                y: fit_y,
-                width: rect_height,
-                height: rect_width,
-            });
+    // Try both normal and rotated orientations
+    for &(w, h) in &[(rect_width, rect_height), (rect_height, rect_width)] {
+        for (i, segment) in skyline.iter().enumerate() {
+            if segment.x + w > bin_width {
+                continue;
+            }
+            
+            let (fit_y, waste) = calculate_fit(skyline, i, w);
+            
+            if fit_y + h <= bin_height && (fit_y < best_y || (fit_y == best_y && waste < best_waste)) {
+                best_y = fit_y;
+                best_waste = waste;
+                best_rect = Some(Rect {
+                    x: segment.x,
+                    y: fit_y,
+                    width: w,
+                    height: h,
+                });
+            }
         }
     }
     

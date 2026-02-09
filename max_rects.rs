@@ -60,53 +60,28 @@ fn find_best_area_fit(
     let mut best_rect = None;
     
     for (idx, free_rect) in free_rects.iter().enumerate() {
-        if free_rect.contains(rect_width, rect_height) {
-            let placed = Rect {
-                x: free_rect.x,
-                y: free_rect.y,
-                width: rect_width,
-                height: rect_height,
-            };
-            
-            let leftover_horiz = free_rect.width - rect_width;
-            let leftover_vert = free_rect.height - rect_height;
-            let short_side_fit = leftover_horiz.min(leftover_vert);
-            let long_side_fit = leftover_horiz.max(leftover_vert);
-            let area_diff = free_rect.area() - (rect_width * rect_height);
-            
-            if short_side_fit < best_short_side_fit || 
-               (short_side_fit == best_short_side_fit && long_side_fit < best_long_side_fit) ||
-               (short_side_fit == best_short_side_fit && long_side_fit == best_long_side_fit && area_diff < best_area_diff) {
-                best_short_side_fit = short_side_fit;
-                best_long_side_fit = long_side_fit;
-                best_area_diff = area_diff;
-                best_idx = Some(idx);
-                best_rect = Some(placed);
-            }
-        }
-        
-        if free_rect.contains(rect_height, rect_width) {
-            let placed = Rect {
-                x: free_rect.x,
-                y: free_rect.y,
-                width: rect_height, 
-                height: rect_width,  
-            };
-        
-            let leftover_horiz = free_rect.width - rect_height;
-            let leftover_vert = free_rect.height - rect_width;
-            let short_side_fit = leftover_horiz.min(leftover_vert);
-            let long_side_fit = leftover_horiz.max(leftover_vert);
-            let area_diff = free_rect.area() - (rect_width * rect_height);
-            
-            if short_side_fit < best_short_side_fit || 
-               (short_side_fit == best_short_side_fit && long_side_fit < best_long_side_fit) ||
-               (short_side_fit == best_short_side_fit && long_side_fit == best_long_side_fit && area_diff < best_area_diff) {
-                best_short_side_fit = short_side_fit;
-                best_long_side_fit = long_side_fit;
-                best_area_diff = area_diff;
-                best_idx = Some(idx);
-                best_rect = Some(placed);
+        for &(w, h) in &[(rect_width, rect_height), (rect_height, rect_width)] {
+            if free_rect.contains(w, h) {
+                let leftover_horiz = free_rect.width - w;
+                let leftover_vert = free_rect.height - h;
+                let short_side_fit = leftover_horiz.min(leftover_vert);
+                let long_side_fit = leftover_horiz.max(leftover_vert);
+                let area_diff = free_rect.area() - (rect_width * rect_height);
+                
+                if short_side_fit < best_short_side_fit || 
+                   (short_side_fit == best_short_side_fit && long_side_fit < best_long_side_fit) ||
+                   (short_side_fit == best_short_side_fit && long_side_fit == best_long_side_fit && area_diff < best_area_diff) {
+                    best_short_side_fit = short_side_fit;
+                    best_long_side_fit = long_side_fit;
+                    best_area_diff = area_diff;
+                    best_idx = Some(idx);
+                    best_rect = Some(Rect {
+                        x: free_rect.x,
+                        y: free_rect.y,
+                        width: w,
+                        height: h,
+                    });
+                }
             }
         }
     }

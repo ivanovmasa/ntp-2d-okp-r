@@ -1,12 +1,10 @@
 use ::rand::prelude::*;
-use ::rand::rngs::ThreadRng;
+use ::rand::rngs::StdRng;
 use rayon::prelude::*;
-//use ::rand::SeedableRng; 
-//use ::rand::rngs::SmallRng;
 
 use crate::{Problem, Heuristic};
 
-pub fn generate_chromosome(len: usize, rng: &mut ThreadRng) -> Vec<u8> {
+pub fn generate_chromosome(len: usize, rng: &mut StdRng) -> Vec<u8> {
     let mut chromosome = vec![1u8; len];
     let zeros = len / 10;
     
@@ -17,14 +15,14 @@ pub fn generate_chromosome(len: usize, rng: &mut ThreadRng) -> Vec<u8> {
     chromosome
 }
 
-pub fn generate_initial_chromosomes(size: usize, count: usize, mut rng: &mut ThreadRng) -> Vec<Vec<u8>> {
+pub fn generate_initial_chromosomes(size: usize, count: usize, mut rng: &mut StdRng) -> Vec<Vec<u8>> {
     (0..count)
         .map(|_| generate_chromosome(size, &mut rng))
         .collect()
 }
 
 
-pub fn roulette_selection(parents: &[Vec<u8>], rng: &mut ThreadRng) -> Vec<(Vec<u8>, Vec<u8>)> {
+pub fn roulette_selection(parents: &[Vec<u8>], rng: &mut StdRng) -> Vec<(Vec<u8>, Vec<u8>)> {
     let len = parents.len();
     (0..(len / 2))
         .map(|_| {
@@ -41,7 +39,7 @@ pub fn roulette_selection(parents: &[Vec<u8>], rng: &mut ThreadRng) -> Vec<(Vec<
 }
 
 //SERIAL VERSION
-pub fn two_point_crossover(pairs: &[(Vec<u8>, Vec<u8>)], rng: &mut ThreadRng) -> Vec<Vec<u8>> {
+pub fn two_point_crossover(pairs: &[(Vec<u8>, Vec<u8>)], rng: &mut StdRng) -> Vec<Vec<u8>> {
     pairs.iter()
         .flat_map(|(parent1, parent2)| {
             let len = parent1.len();
@@ -58,7 +56,7 @@ pub fn two_point_crossover(pairs: &[(Vec<u8>, Vec<u8>)], rng: &mut ThreadRng) ->
 }
 
 //PARALEL VERSION
-//pub fn two_point_crossover(pairs: &[(Vec<u8>, Vec<u8>)], rng: &mut ThreadRng) -> Vec<Vec<u8>> {
+//pub fn two_point_crossover(pairs: &[(Vec<u8>, Vec<u8>)], rng: &mut StdRng) -> Vec<Vec<u8>> {
 //     let seed = rng.random::<u64>();
 //     pairs.par_iter()
 //         .enumerate()
@@ -78,7 +76,7 @@ pub fn two_point_crossover(pairs: &[(Vec<u8>, Vec<u8>)], rng: &mut ThreadRng) ->
 // }
 
 //SERIAL VERSION
-pub fn mutation(chromosomes: &Vec<Vec<u8>>, rate: f32, rng: &mut ThreadRng) -> Vec<Vec<u8>> {
+pub fn mutation(chromosomes: &Vec<Vec<u8>>, rate: f32, rng: &mut StdRng) -> Vec<Vec<u8>> {
     chromosomes.iter().map(|chromosome| {
         let mut mutated = chromosome.clone();
         for gene in mutated.iter_mut() {
@@ -91,7 +89,7 @@ pub fn mutation(chromosomes: &Vec<Vec<u8>>, rate: f32, rng: &mut ThreadRng) -> V
 }
 
 //PARALEL VERSION
-// pub fn mutation(chromosomes: &Vec<Vec<u8>>, rate: f32, rng: &mut ThreadRng) -> Vec<Vec<u8>> {
+// pub fn mutation(chromosomes: &Vec<Vec<u8>>, rate: f32, rng: &mut StdRng) -> Vec<Vec<u8>> {
 //     let seed = rng.random::<u64>();
     
 //     chromosomes.par_iter()
@@ -161,7 +159,7 @@ pub fn genetic_algorithm(
     mutation_rate: f32,
     elitism_rate: f32,
     max_iterations: usize,
-    rng: &mut ThreadRng,
+    rng: &mut StdRng,
     heuristic: Heuristic,
 ) -> (Vec<u8>, f32) {
     let mut population = generate_initial_chromosomes(

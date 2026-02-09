@@ -3,7 +3,8 @@ use crate::ui::{Button, TextField};
 use crate::{Problem, Heuristic};
 use crate::util::Rect;
 use crate::genetic::genetic_algorithm;
-use ::rand::rng;
+use ::rand::rngs::StdRng;
+use ::rand::SeedableRng;
 use std::time::Instant;
 use std::fs;
 use serde_json::Value;
@@ -587,7 +588,7 @@ impl AppState {
                         println!("{}: {:.2}% in {:.2}s (cached)", heuristic.name(), self.best_fitness * 100.0, self.last_solve_time);
                     } else {
                         // Run GA for other heuristics
-                        let mut rng = rng();
+                        let mut rng = StdRng::seed_from_u64(42);
                         let start = Instant::now();
                         
                         let (best_chromosome, fitness) = genetic_algorithm(
@@ -641,7 +642,7 @@ impl AppState {
                 let mut best_result: Option<HeuristicResult> = None;
                 
                 for heuristic in &heuristics {
-                    let mut rng = rng();
+                    let mut rng = StdRng::seed_from_u64(42);
                     let start = Instant::now();
                     
                     let (best_chromosome, fitness) = genetic_algorithm(
@@ -687,7 +688,7 @@ impl AppState {
                 // Use the selected heuristic
                 println!("Heuristic: {}", self.selected_heuristic.name());
                 
-                let mut rng = rng();
+                let mut rng = StdRng::seed_from_u64(42);
                 let start = Instant::now();
                 let (best_chromosome, fitness) = genetic_algorithm(
                     prob,

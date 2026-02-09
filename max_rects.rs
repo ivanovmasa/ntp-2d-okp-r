@@ -149,26 +149,30 @@ fn split_all_free_rects(free_rects: &mut Vec<Rect>, placed: &Rect) {
 }
 
 fn prune_free_rects(free_rects: &mut Vec<Rect>) {
-    let mut i = 0;
-    while i < free_rects.len() {
-        let mut j = i + 1;
-        let mut remove_i = false;
-        
-        while j < free_rects.len() {
+    let len = free_rects.len();
+    let mut remove = vec![false; len];
+    
+    for i in 0..len {
+        if remove[i] {
+            continue;
+        }
+        for j in (i + 1)..len {
+            if remove[j] {
+                continue;
+            }
             if is_contained_in(&free_rects[i], &free_rects[j]) {
-                remove_i = true;
+                remove[i] = true;
                 break;
             } else if is_contained_in(&free_rects[j], &free_rects[i]) {
-                free_rects.remove(j);
-            } else {
-                j += 1;
+                remove[j] = true;
             }
         }
-        
-        if remove_i {
-            free_rects.remove(i);
-        } else {
-            i += 1;
-        }
     }
+    
+    let mut idx = 0;
+    free_rects.retain(|_| {
+        let keep = !remove[idx];
+        idx += 1;
+        keep
+    });
 }

@@ -25,10 +25,11 @@ pub fn generate_initial_chromosomes(size: usize, count: usize, mut rng: &mut Thr
 
 
 pub fn roulette_selection(parents: &[Vec<u8>], rng: &mut ThreadRng) -> Vec<(Vec<u8>, Vec<u8>)> {
-    (0..(parents.len() / 2))
+    let len = parents.len();
+    (0..(len / 2))
         .map(|_| {
-            let weights: Vec<f32> = (0..parents.len())
-                .map(|i| (i as f32 + 1.0) * rng.random::<f32>())
+            let weights: Vec<f32> = (0..len)
+                .map(|i| (len - i) as f32 * rng.random::<f32>())
                 .collect();
             
             let mut indices: Vec<usize> = (0..parents.len()).collect();

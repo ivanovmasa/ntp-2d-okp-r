@@ -162,7 +162,7 @@ impl AppState {
     }
     
     fn render_json_selection(&mut self) {
-        draw_text("Select JSON File (1-13)", 350.0, 80.0, 30.0, BLACK);
+        draw_text("Select JSON File", 400.0, 80.0, 30.0, BLACK);
         
         let button_width = 260.0;
         let button_height = 75.0;
@@ -557,11 +557,12 @@ impl AppState {
             draw_text(&format!("Fitness: {:.1}%", self.best_fitness * 100.0), info_x + 20.0, 80.0, 18.0, YELLOW);
             draw_text(&format!("Waste: {:.1}%", (1.0 - self.best_fitness) * 100.0), info_x + 20.0, 110.0, 18.0, ORANGE);
             draw_text(&format!("Placed: {}/{}", self.placed_rects.len(), prob.rectangles.len()), info_x + 20.0, 140.0, 18.0, GREEN);
-            draw_text(&format!("Bin: {}x{}", prob.bin_width, prob.bin_height), info_x + 20.0, 170.0, 18.0, WHITE);
+            draw_text(&format!("Time: {:.0}ms", self.last_solve_time * 1000.0), info_x + 20.0, 170.0, 18.0, WHITE);
+            draw_text(&format!("Bin: {}x{}", prob.bin_width, prob.bin_height), info_x + 20.0, 200.0, 18.0, WHITE);
             
-            draw_text("Heuristic:", info_x + 20.0, 210.0, 16.0, LIGHTGRAY);
+            draw_text("Heuristic:", info_x + 20.0, 230.0, 16.0, LIGHTGRAY);
             let heuristic_name = self.selected_heuristic.name().split(" ").next().unwrap_or("");
-            draw_text(heuristic_name, info_x + 20.0, 230.0, 18.0, SKYBLUE);
+            draw_text(heuristic_name, info_x + 20.0, 250.0, 18.0, SKYBLUE);
             
             let compare_button = Button::new(info_x + 25.0, screen_height() - 210.0, 150.0, 50.0, "Compare", ORANGE);
             let back_button = Button::new(info_x + 25.0, screen_height() - 140.0, 150.0, 50.0, "Back", RED);
@@ -585,7 +586,7 @@ impl AppState {
                             time_seconds: self.last_solve_time,
                             placed_rects: self.placed_rects.clone(),
                         });
-                        println!("{}: {:.2}% in {:.2}s (cached)", heuristic.name(), self.best_fitness * 100.0, self.last_solve_time);
+                        println!("{}: {:.2}% in {:.0}ms (cached)", heuristic.name(), self.best_fitness * 100.0, self.last_solve_time * 1000.0);
                     } else {
                         // Run GA for other heuristics
                         let mut rng = StdRng::seed_from_u64(42);
@@ -611,7 +612,7 @@ impl AppState {
                             placed_rects: rects,
                         });
                         
-                        println!("{}: {:.2}% in {:.2}s", heuristic.name(), fitness * 100.0, time_seconds);
+                        println!("{}: {:.2}% in {:.0}ms", heuristic.name(), fitness * 100.0, time_seconds * 1000.0);
                     }
                 }
                 
@@ -658,7 +659,7 @@ impl AppState {
                     let time_seconds = start.elapsed().as_secs_f64();
                     let (rects, _) = heuristic.decode_chromosome(&best_chromosome, prob);
                     
-                    println!("{}: {:.2}% in {:.2}s", heuristic.name(), fitness * 100.0, time_seconds);
+                    println!("{}: {:.2}% in {:.0}ms", heuristic.name(), fitness * 100.0, time_seconds * 1000.0);
                     
                     let result = HeuristicResult {
                         heuristic: *heuristic,
@@ -701,7 +702,7 @@ impl AppState {
                 );
                 
                 let solve_time = start.elapsed().as_secs_f64();
-                println!("GA took: {:.2}s", solve_time);
+                println!("GA took: {:.0}ms", solve_time * 1000.0);
                 println!("Fitness: {:.2}%", fitness * 100.0);
                 
                 let (rects, _) = self.selected_heuristic.decode_chromosome(&best_chromosome, prob);
@@ -761,7 +762,7 @@ impl AppState {
             draw_rectangle(time_graph_x, graph_y, graph_width, graph_height, WHITE);
             draw_rectangle_lines(time_graph_x, graph_y, graph_width, graph_height, 2.0, BLACK);
             
-            draw_text("Time Comparison (s)", time_graph_x + 10.0, graph_y - 10.0, 22.0, BLACK);
+            draw_text("Time Comparison (ms)", time_graph_x + 10.0, graph_y - 10.0, 22.0, BLACK);
             
             if !self.comparison_results.is_empty() {
                 let max_time = self.comparison_results.iter().map(|r| r.time_seconds).fold(0.0f64, f64::max);
@@ -782,7 +783,7 @@ impl AppState {
                     };
                     
                     draw_rectangle(x, y, bar_width, bar_height, color);
-                    draw_text(&format!("{:.2}s", result.time_seconds), x, y - 5.0, 16.0, BLACK);
+                    draw_text(&format!("{:.0}ms", result.time_seconds * 1000.0), x, y - 5.0, 16.0, BLACK);
                     
                     let label = result.heuristic.name().split(" ").next().unwrap_or("");
                     let label_dims = measure_text(label, None, 14, 1.0);

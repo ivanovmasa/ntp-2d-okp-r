@@ -22,19 +22,47 @@ pub fn generate_initial_chromosomes(size: usize, count: usize, mut rng: &mut Std
 }
 
 
-pub fn roulette_selection(parents: &[Vec<u8>], rng: &mut StdRng) -> Vec<(Vec<u8>, Vec<u8>)> {
-    let len = parents.len();
-    (0..(len / 2))
-        .map(|_| {
-            let weights: Vec<f32> = (0..len)
-                .map(|i| (len - i) as f32 * rng.random::<f32>())
-                .collect();
-            
-            let mut indices: Vec<usize> = (0..parents.len()).collect();
-            indices.sort_by(|a, b| weights[*b].partial_cmp(&weights[*a]).unwrap());
-            
-            (parents[indices[0]].clone(), parents[indices[1]].clone())
-        })
+pub fn roulette_selection(ranked: &[(Vec<u8>, f32)], rng: &mut StdRng) -> Vec<(Vec<u8>, Vec<u8>)> {
+    let len = ranked.len();
+    if len < 2 {
+        return Vec::new();
+    }
+
+    let pair_count = len / 2;
+    let fitness: Vec<f32> = ranked
+        .iter()
+        .map(|(_, fit)| if fit.is_finite() && *fit > 0.0 { *fit } else { 0.0 })
+        .collect();
+    let total_fitness: f32 = fitness.iter().sum();
+
+    if total_fitness <= 0.0 {
+        return (0..pair_count)
+            .map(|_| {
+                let p1 = rng.random_range(0..len);
+                let p2 = rng.random_range(0..len);
+                (ranked[p1].0.clone(), ranked[p2].0.clone())
+            })
+            .collect();
+    }
+
+    let mut cumulative = Vec::with_capacity(len);
+    let mut running = 0.0f32;
+    for f in &fitness {
+        running += *f;
+        cumulative.push(running);
+    }
+
+    let sample_parent = |rng: &mut StdRng| -> Vec<u8> {
+        let r = rng.random::<f32>() * total_fitness;
+        let mut idx = 0usize;
+        while idx < len && cumulative[idx] < r {
+            idx += 1;
+        }
+        ranked[idx.min(len - 1)].0.clone()
+    };
+
+    (0..pair_count)
+        .map(|_| (sample_parent(rng), sample_parent(rng)))
         .collect()
 }
 
@@ -181,7 +209,7 @@ pub fn genetic_algorithm(
         let parents: Vec<Vec<u8>> = ranked.iter()
             .map(|(chr, _)| chr.clone())
             .collect();
-        let pairs = roulette_selection(&parents, rng);
+        let pairs = roulette_selection(&ranked, rng);
         let children = two_point_crossover(&pairs, rng);
         let mutated_children = mutation(&children, mutation_rate, rng);
         population = elitism(&parents, &mutated_children, elitism_rate, population_size);
